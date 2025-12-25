@@ -1,119 +1,47 @@
--- ESP FULL PRO 2025 (PC & MOBILE)
--- Funcionalidades: Box, Nomes, Rig, Tracers, Health Bar Dinâmica e Chams
+-- ESP STANDALONE 2025 (Inicia Desativado)
+_G.ESP_Enabled = false 
+
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local RunService = game:GetService("RunService")
 
--- CONFIGURAÇÕES VISUAIS
-local ESP_Config = {
-    Enabled = true,
-    Boxes = true,
-    Names = true,
-    RigType = true,
-    Tracers = true,
-    HealthBar = true,
-    Chams = true, -- Wallhack de preenchimento
-    Color = Color3.fromRGB(255, 0, 0) -- Vermelho
-}
-
 local function CreateESP(Player)
-    -- Criar os desenhos (Drawing API)
     local Box = Drawing.new("Square")
     local Name = Drawing.new("Text")
-    local Tracer = Drawing.new("Line")
-    local HealthBarOutline = Drawing.new("Square")
     local HealthBar = Drawing.new("Square")
 
-    local function Update()
-        local Connection
-        Connection = RunService.RenderStepped:Connect(function()
-            if ESP_Config.Enabled and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") and Player.Character:FindFirstChild("Humanoid") then
-                local Character = Player.Character
-                local RootPart = Character.HumanoidRootPart
-                local Humanoid = Character.Humanoid
-                local Pos, OnScreen = Camera:WorldToViewportPoint(RootPart.Position)
+    RunService.RenderStepped:Connect(function()
+        if _G.ESP_Enabled and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") then
+            local Root = Player.Character.HumanoidRootPart
+            local Hum = Player.Character.Humanoid
+            local Pos, OnScreen = Camera:WorldToViewportPoint(Root.Position)
 
-                if OnScreen and Humanoid.Health > 0 then
-                    local SizeY = (Camera:WorldToViewportPoint(RootPart.Position - Vector3.new(0, 3, 0)).Y - Camera:WorldToViewportPoint(RootPart.Position + Vector3.new(0, 2.6, 0)).Y)
-                    local BoxSize = Vector2.new(SizeY * 1.5, SizeY)
-                    local BoxPos = Vector2.new(Pos.X - BoxSize.X / 2, Pos.Y - BoxSize.Y / 2)
+            if OnScreen and Hum.Health > 0 then
+                local SizeY = (Camera:WorldToViewportPoint(Root.Position - Vector3.new(0, 3, 0)).Y - Camera:WorldToViewportPoint(Root.Position + Vector3.new(0, 2.6, 0)).Y)
+                local BoxSize = Vector2.new(SizeY * 1.5, SizeY)
+                local BoxPos = Vector2.new(Pos.X - BoxSize.X / 2, Pos.Y - BoxSize.Y / 2)
 
-                    -- 1. CHAMS (WALLHACK DE BRILHO)
-                    if ESP_Config.Chams then
-                        local Highlight = Character:FindFirstChild("GlobalCham") or Instance.new("Highlight", Character)
-                        Highlight.Name = "GlobalCham"
-                        Highlight.FillColor = ESP_Config.Color
-                        Highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                        Highlight.FillAlpha = 0.5
-                        Highlight.OutlineAlpha = 0
-                    end
+                Box.Visible = true; Box.Size = BoxSize; Box.Position = BoxPos; Box.Color = Color3.fromRGB(255, 0, 0)
+                Name.Visible = true; Name.Text = Player.Name; Name.Position = Vector2.new(Pos.X, BoxPos.Y - 20); Name.Center = true; Name.Outline = true
+                
+                HealthBar.Visible = true; HealthBar.Filled = true
+                HealthBar.Size = Vector2.new(2, (Hum.Health / Hum.MaxHealth) * BoxSize.Y)
+                HealthBar.Position = Vector2.new(BoxPos.X - 5, BoxPos.Y + (BoxSize.Y - HealthBar.Size.Y))
+                HealthBar.Color = Color3.fromHSV(Hum.Health / Hum.MaxHealth * 0.3, 1, 1)
 
-                    -- 2. CAIXA (BOX)
-                    if ESP_Config.Boxes then
-                        Box.Visible = true
-                        Box.Size = BoxSize
-                        Box.Position = BoxPos
-                        Box.Color = ESP_Config.Color
-                        Box.Thickness = 1
-                    else Box.Visible = false end
-
-                    -- 3. NOME E RIG
-                    if ESP_Config.Names then
-                        local Rig = ESP_Config.RigType and (Humanoid.RigType == Enum.HumanoidRigType.R15 and "[R15]" or "[R6]") or ""
-                        Name.Visible = true
-                        Name.Text = Player.Name .. " " .. Rig
-                        Name.Position = Vector2.new(Pos.X, BoxPos.Y - 20)
-                        Name.Center = true
-                        Name.Outline = true
-                    else Name.Visible = false end
-
-                    -- 4. BARRA DE VIDA DINÂMICA
-                    if ESP_Config.HealthBar then
-                        HealthBarOutline.Visible = true
-                        HealthBarOutline.Position = Vector2.new(BoxPos.X - 6, BoxPos.Y)
-                        HealthBarOutline.Size = Vector2.new(4, BoxSize.Y)
-                        HealthBarOutline.Filled = true
-                        HealthBarOutline.Color = Color3.fromRGB(0,0,0)
-
-                        HealthBar.Visible = true
-                        HealthBar.Size = Vector2.new(2, (Humanoid.Health / Humanoid.MaxHealth) * BoxSize.Y)
-                        HealthBar.Position = Vector2.new(BoxPos.X - 5, BoxPos.Y + (BoxSize.Y - HealthBar.Size.Y))
-                        HealthBar.Color = Color3.fromHSV(Humanoid.Health / Humanoid.MaxHealth * 0.3, 1, 1)
-                        HealthBar.Filled = true
-                    else 
-                        HealthBar.Visible = false
-                        HealthBarOutline.Visible = false
-                    end
-
-                    -- 5. LINHAS (TRACERS)
-                    if ESP_Config.Tracers then
-                        Tracer.Visible = true
-                        Tracer.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y)
-                        Tracer.To = Vector2.new(Pos.X, Pos.Y + (BoxSize.Y / 2))
-                        Tracer.Color = ESP_Config.Color
-                    else Tracer.Visible = false end
-                else
-                    Box.Visible = false; Name.Visible = false; Tracer.Visible = false
-                    HealthBar.Visible = false; HealthBarOutline.Visible = false
-                    if Character:FindFirstChild("GlobalCham") then Character.GlobalCham.Enabled = false end
-                end
+                local Highlight = Player.Character:FindFirstChild("EspCham") or Instance.new("Highlight", Player.Character)
+                Highlight.Name = "EspCham"; Highlight.Enabled = true; Highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
             else
-                -- Limpeza
-                Box.Visible = false; Name.Visible = false; Tracer.Visible = false
-                HealthBar.Visible = false; HealthBarOutline.Visible = false
-                if not Player.Parent then
-                    Box:Remove(); Name:Remove(); Tracer:Remove(); HealthBar:Remove(); HealthBarOutline:Remove()
-                    Connection:Disconnect()
-                end
+                Box.Visible = false; Name.Visible = false; HealthBar.Visible = false
+                if Player.Character:FindFirstChild("EspCham") then Player.Character.EspCham.Enabled = false end
             end
-        end)
-    end
-    coroutine.wrap(Update)()
+        else
+            Box.Visible = false; Name.Visible = false; HealthBar.Visible = false
+            if Player.Character and Player.Character:FindFirstChild("EspCham") then Player.Character.EspCham.Enabled = false end
+        end
+    end)
 end
 
--- Iniciar para todos os jogadores
 for _, v in pairs(Players:GetPlayers()) do if v ~= LocalPlayer then CreateESP(v) end end
 Players.PlayerAdded:Connect(function(v) CreateESP(v) end)
-
-print("ESP Visual Pro Carregado (Sem Aimbot) - 2025")
