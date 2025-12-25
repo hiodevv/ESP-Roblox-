@@ -1,77 +1,42 @@
--- Configurações do Círculo e Aimbot
-local FOVConfig = {
-    Enabled = true,
-    Radius = 150, -- Tamanho da roda no centro
-    Color = Color3.fromRGB(0, 255, 255),
-    Thickness = 1.5,
-    Transparency = 0.7,
-    Filled = false
-}
+-- AIMBOT STANDALONE 2025 (Inicia Desativado)
+_G.Aimbot_Enabled = false
+_G.FOV_Radius = 120
+_G.AimSmoothing = 0.15
 
-local Settings = {
-    AimbotEnabled = true,
-    AimPart = "Head", -- Mira na Cabeça
-    Smoothing = 0.15   -- Suavidade (Ajuste entre 0.05 a 0.5)
-}
-
--- Serviços
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 
--- Criar o Círculo (Roda no Centro)
 local FOVCircle = Drawing.new("Circle")
-FOVCircle.Visible = FOVConfig.Enabled
-FOVCircle.Radius = FOVConfig.Radius
-FOVCircle.Color = FOVConfig.Color
-FOVCircle.Thickness = FOVConfig.Thickness
-FOVCircle.Transparency = FOVConfig.Transparency
-FOVCircle.Filled = FOVConfig.Filled
+FOVCircle.Thickness = 1
+FOVCircle.Color = Color3.fromRGB(255, 255, 255)
+FOVCircle.Transparency = 0.5
+FOVCircle.Visible = false
 
--- Função para encontrar o jogador mais próximo DENTRO da roda
-local function GetTarget()
-    local target = nil
-    local shortestDistance = FOVConfig.Radius -- Só aceita se estiver dentro do raio
+RunService.RenderStepped:Connect(function()
+    FOVCircle.Visible = _G.Aimbot_Enabled
+    FOVCircle.Radius = _G.FOV_Radius
+    FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
 
-    for _, player in pairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild(Settings.AimPart) then
-            local pos, onScreen = Camera:WorldToViewportPoint(player.Character[Settings.AimPart].Position)
-            
-            if onScreen then
-                -- Calcula a distância do centro da tela (onde está a roda) até o jogador
-                local screenCenter = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-                local distance = (Vector2.new(pos.X, pos.Y) - screenCenter).Magnitude
-                
-                if distance < shortestDistance then
-                    target = player
-                    shortestDistance = distance
+    if _G.Aimbot_Enabled then
+        local isAiming = UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) or UserInputService.TouchEnabled
+        if isAiming then
+            local target = nil
+            local shortest = _G.FOV_Radius
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") then
+                    local pos, onScreen = Camera:WorldToViewportPoint(p.Character.Head.Position)
+                    if onScreen then
+                        local mag = (Vector2.new(pos.X, pos.Y) - FOVCircle.Position).Magnitude
+                        if mag < shortest then target = p; shortest = mag end
+                    end
                 end
             end
-        end
-    end
-    return target
-end
-
--- Loop de Atualização
-RunService.RenderStepped:Connect(function()
-    -- Mantém a roda fixa no centro exato da tela
-    local center = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
-    FOVCircle.Position = center
-
-    if Settings.AimbotEnabled then
-        -- Verifica se o botão direito está pressionado (PC) ou se está apenas ligado (Mobile)
-        local isAiming = UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2) or UserInputService.TouchEnabled
-        
-        if isAiming then
-            local target = GetTarget()
             if target then
-                local targetPos = target.Character[Settings.AimPart].Position
-                -- Interpolação suave para a mira não "pular" (Smoothing)
-                Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, targetPos), Settings.Smoothing)
+                Camera.CFrame = Camera.CFrame:Lerp(CFrame.new(Camera.CFrame.Position, target.Character.Head.Position), _G.AimSmoothing)
             end
         end
     end
 end)
-
