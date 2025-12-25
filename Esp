@@ -1,0 +1,101 @@
+-- ESP GLOBAL 2025 (PC & MOBILE)
+-- Compatível com Solara, Delta, Arceus e Fluxus
+
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
+local RunService = game:GetService("RunService")
+
+-- Configurações Visuais
+local ESP_Config = {
+    Enabled = true,
+    Boxes = true,
+    Names = true,
+    Distances = true,
+    Tracers = true,
+    RigType = true,
+    Color = Color3.fromRGB(255, 0, 0) -- Vermelho
+}
+
+local function CreateESP(Player)
+    -- Criar os desenhos usando a Drawing API
+    local Box = Drawing.new("Square")
+    local Name = Drawing.new("Text")
+    local Distance = Drawing.new("Text")
+    local Tracer = Drawing.new("Line")
+
+    local function Update()
+        local Connection
+        Connection = RunService.RenderStepped:Connect(function()
+            if ESP_Config.Enabled and Player.Character and Player.Character:FindFirstChild("HumanoidRootPart") and Player.Character:FindFirstChild("Humanoid") and Player.Character.Humanoid.Health > 0 then
+                local RootPart = Player.Character.HumanoidRootPart
+                local Pos, OnScreen = Camera:WorldToViewportPoint(RootPart.Position)
+
+                if OnScreen then
+                    -- 1. Lógica da Caixa (Box)
+                    if ESP_Config.Boxes then
+                        local SizeY = (Camera:WorldToViewportPoint(RootPart.Position - Vector3.new(0, 3, 0)).Y - Camera:WorldToViewportPoint(RootPart.Position + Vector3.new(0, 2.6, 0)).Y)
+                        Box.Size = Vector2.new(SizeY * 1.5, SizeY)
+                        Box.Position = Vector2.new(Pos.X - Box.Size.X / 2, Pos.Y - Box.Size.Y / 2)
+                        Box.Color = ESP_Config.Color
+                        Box.Visible = true
+                    else Box.Visible = false end
+
+                    -- 2. Lógica do Nome e Rig
+                    if ESP_Config.Names then
+                        local Rig = ESP_Config.RigType and (Player.Character.Humanoid.RigType == Enum.HumanoidRigType.R15 and "[R15]" or "[R6]") or ""
+                        Name.Text = Player.Name .. " " .. Rig
+                        Name.Position = Vector2.new(Pos.X, Pos.Y - (Box.Size.Y / 2) - 20)
+                        Name.Color = Color3.fromRGB(255, 255, 255)
+                        Name.Outline = true
+                        Name.Center = true
+                        Name.Visible = true
+                    else Name.Visible = false end
+
+                    -- 3. Lógica da Distância
+                    if ESP_Config.Distances then
+                        local Dist = math.floor((LocalPlayer.Character.HumanoidRootPart.Position - RootPart.Position).Magnitude)
+                        Distance.Text = Dist .. "m"
+                        Distance.Position = Vector2.new(Pos.X, Pos.Y + (Box.Size.Y / 2) + 5)
+                        Distance.Color = Color3.fromRGB(255, 255, 0)
+                        Distance.Outline = true
+                        Distance.Center = true
+                        Distance.Visible = true
+                    else Distance.Visible = false end
+
+                    -- 4. Lógica da Linha (Tracer)
+                    if ESP_Config.Tracers then
+                        Tracer.From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y) -- Base da tela
+                        Tracer.To = Vector2.new(Pos.X, Pos.Y + (Box.Size.Y / 2))
+                        Tracer.Color = ESP_Config.Color
+                        Tracer.Visible = true
+                    else Tracer.Visible = false end
+                else
+                    Box.Visible = false
+                    Name.Visible = false
+                    Distance.Visible = false
+                    Tracer.Visible = false
+                end
+            else
+                Box.Visible = false
+                Name.Visible = false
+                Distance.Visible = false
+                Tracer.Visible = false
+                if not Player.Parent then
+                    Box:Remove()
+                    Name:Remove()
+                    Distance:Remove()
+                    Tracer:Remove()
+                    Connection:Disconnect()
+                end
+            end
+        end)
+    end
+    coroutine.wrap(Update)()
+end
+
+-- Ativar para todos
+for _, v in pairs(Players:GetPlayers()) do
+    if v ~= LocalPlayer then CreateESP(v) end
+end
+Players.PlayerAdded:Connect(function(v) CreateESP(v) end)
